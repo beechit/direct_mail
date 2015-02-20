@@ -1032,9 +1032,10 @@ class DirectMailUtility {
 	 *
 	 * @param	array		$row: directmail DB record
 	 * @param	array 		$params: any default parameters (usually the ones from pageTSconfig)
-	 * @return	string		error or warning message during fetching the content
+	 * @param	bool 		$returnArray: return error of warning message as array or string
+	 * @return string|array	error or warning message during fetching the content
 	 */
-	public static function fetchUrlContentsForDirectMailRecord($row, $params) {
+	public static function fetchUrlContentsForDirectMailRecord($row, $params, $returnArray = FALSE) {
 		$theOutput = '';
 		$errorMsg = array();
 		$warningMsg = array();
@@ -1142,7 +1143,11 @@ class DirectMailUtility {
 			$theOutput .= $flashMessage->render();
 		}
 
-		return $theOutput;
+		if ($returnArray) {
+			return array('errors' => $errorMsg, 'warnings' => $warningMsg);
+		} else {
+			return $theOutput;
+		}
 	}
 
 

@@ -45,7 +45,8 @@ class MailFromDraft extends AbstractTask {
 	protected $hookObjects = array();
 
 	/**
-	 * setter function to set the draft ID that the task should use
+	 * Setter function to set the draft ID that the task should use
+	 *
 	 * @param integer $draftUid the UID of the sys_dmail record (needs to be of type=3 or type=4)
 	 * @param void
 	 */
@@ -57,7 +58,8 @@ class MailFromDraft extends AbstractTask {
 	 * Function executed from scheduler.
 	 * Creates a new newsletter record, and sets the scheduled time to "now"
 	 *
-	 * @return	bool
+	 * @return bool
+	 * @throws \Exception
 	 */
 	function execute() {
 		if ($this->draftUid > 0) {
@@ -66,44 +68,49 @@ class MailFromDraft extends AbstractTask {
 
 			$draftRecord = BackendUtility::getRecord('sys_dmail', $this->draftUid);
 
-				// get some parameters from tsConfig
+			// get some parameters from tsConfig
 			$tsConfig = BackendUtility::getModTSconfig($draftRecord['pid'], 'mod.web_modules.dmail');
 			$defaultParams = $tsConfig['properties'];
 
-				// make a real record out of it
+			// make a real record out of it
 			unset($draftRecord['uid']);
 			$draftRecord['tstamp'] = time();
-			$draftRecord['type'] -= 2;	// set the right type (3 => 1, 2 => 0)
+			$draftRecord['type'] -= 2;    // set the right type (3 => 1, 2 => 0)
 
-				// Insert the new dmail record into the DB
+			// Insert the new dmail record into the DB
 			$GLOBALS['TYPO3_DB']->exec_INSERTquery('sys_dmail', $draftRecord);
 			$this->dmailUid = $GLOBALS['TYPO3_DB']->sql_insert_id();
 
-				// Call a hook after insertion of the cloned dmail record
-				// This hook can get used to modify fields of the direct mail.
-				// For example the current date could get appended to the subject.
+			// Call a hook after insertion of the cloned dmail record
+			// This hook can get used to modify fields of the direct mail.
+			// For example the current date could get appended to the subject.
 			$hookParams['draftRecord'] = &$draftRecord;
 			$hookParams['defaultParams'] = &$defaultParams;
 			$this->callHooks('postInsertClone', $hookParams);
 
-				// fetch the cloned record
+			// fetch the cloned record
 			$mailRecord = BackendUtility::getRecord('sys_dmail', $this->dmailUid);
 
-			DirectMailUtility::fetchUrlContentsForDirectMailRecord($mailRecord, $defaultParams);
+			// fetch mail content
+			$result = DirectMailUtility::fetchUrlContentsForDirectMailRecord($mailRecord, $defaultParams, TRUE);
+
+			if ($result['errors'] !== array()) {
+				throw new \Exception('Failed to fetch contents: ' . implode(', ', $result['errors']));
+			}
 
 			$mailRecord = BackendUtility::getRecord('sys_dmail', $this->dmailUid);
 			if ($mailRecord['mailContent'] && $mailRecord['renderedsize'] > 0) {
 				$updateData = array(
 					'scheduled' => time(),
-					'issent'    => 1
+					'issent' => 1
 				);
-					// Call a hook before enqueuing the cloned dmail record into
-					// the direct mail delivery queue
+				// Call a hook before enqueuing the cloned dmail record into
+				// the direct mail delivery queue
 				$hookParams['mailRecord'] = &$mailRecord;
 				$hookParams['updateData'] = &$updateData;
 				$this->callHooks('enqueueClonedDmail', $hookParams);
-					// Update the cloned dmail so it will get sent upon next
-					// invocation of the mailer engine
+				// Update the cloned dmail so it will get sent upon next
+				// invocation of the mailer engine
 				$GLOBALS['TYPO3_DB']->exec_UPDATEquery('sys_dmail', 'uid = ' . intval($this->dmailUid), $updateData);
 			}
 
@@ -116,9 +123,9 @@ class MailFromDraft extends AbstractTask {
 	 *
 	 * @param $hookMethod
 	 * @param $hookParams
-	 * @return    void
+	 * @return void
 	 */
-	function callHooks($hookMethod, $hookParams) {
+	protected function callHooks($hookMethod, $hookParams) {
 		foreach ($this->hookObjects as $hookObjectInstance) {
 			$hookObjectInstance->$hookMethod($hookParams, $this);
 		}
@@ -128,8 +135,9 @@ class MailFromDraft extends AbstractTask {
 	 * Initializes hook objects for this class
 	 *
 	 * @return void
+	 * @throws \Exception
 	 */
-	function initializeHookObjects() {
+	protected function initializeHookObjects() {
 		if (is_array($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['direct_mail']['mailFromDraft'])) {
 			foreach ($GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['direct_mail']['mailFromDraft'] as $hookObj) {
 				$hookObjectInstance = GeneralUtility::getUserObj($hookObj);
