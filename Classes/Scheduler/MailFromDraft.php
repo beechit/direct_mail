@@ -77,6 +77,11 @@ class MailFromDraft extends AbstractTask {
 			$draftRecord['tstamp'] = time();
 			$draftRecord['type'] -= 2;    // set the right type (3 => 1, 2 => 0)
 
+			// check if domain record is set
+			if ((TYPO3_REQUESTTYPE & TYPO3_REQUESTTYPE_CLI) && (int)$draftRecord['type'] !== 1 && empty($draftRecord['use_domain'])) {
+				throw new \Exception('No domain record set!');
+			}
+
 			// Insert the new dmail record into the DB
 			$GLOBALS['TYPO3_DB']->exec_INSERTquery('sys_dmail', $draftRecord);
 			$this->dmailUid = $GLOBALS['TYPO3_DB']->sql_insert_id();
