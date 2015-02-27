@@ -735,7 +735,7 @@ class Statistics extends \TYPO3\CMS\Backend\Module\BaseScriptClass {
 			$uParts = @parse_url($url);
 			$urlstr = $this->getUrlStr($uParts);
 
-			$label = $this->getLinkLabel($url, $urlstr, FALSE, $HTMLlinks[$id]['label']) ?: $url;
+			$label = $this->getLinkLabel($url, $urlstr, FALSE, $HTMLlinks[$id]['label']);
 
 			$img = '<a href="'.$urlstr.'" target="_blank"><img '.IconUtility::skinImg($GLOBALS["BACK_PATH"], 'gfx/zoom.gif', 'width="12" height="12"').' title="'.htmlspecialchars($label).'" /></a>';
 
@@ -1355,6 +1355,11 @@ class Statistics extends \TYPO3\CMS\Backend\Module\BaseScriptClass {
 				$_params = array('pObj' => &$this, 'url' => $url, 'urlStr' => $urlStr, 'label' => $label);
 				$label = GeneralUtility::callUserFunction($_funcRef, $_params, $this);
 			}
+		}
+
+		// Fallback to url
+		if ($label === '') {
+			$label = $url;
 		}
 
 		if (isset($this->params['maxLabelLength']) && ($this->params['maxLabelLength'] > 0)) {
