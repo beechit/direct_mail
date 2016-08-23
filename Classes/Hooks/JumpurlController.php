@@ -96,23 +96,25 @@ class JumpurlController
                     if ($theTable) {
                         $recipRow = $this->getRawRecord($theTable, $recipientUid);
                         if (is_array($recipRow)) {
+
+                            $rowFieldsArray = explode(',', $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['direct_mail']['defaultRecipFields']);
+                            if ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['direct_mail']['addRecipFields']) {
+                                $rowFieldsArray = array_merge($rowFieldsArray, explode(',', $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['direct_mail']['addRecipFields']));
+                            }
+
+                            reset($rowFieldsArray);
+                            foreach ($rowFieldsArray as $substField) {
+                                $jumpurl = str_replace('###USER_' . $substField . '###', $recipRow[$substField], $jumpurl);
+                            }
+                            // Put in the tablename of the userinformation
+                            $jumpurl = str_replace('###SYS_TABLE_NAME###', substr($theTable, 0, 1), $jumpurl);
+                            // Put in the uid of the mail-record
+                            $jumpurl = str_replace('###SYS_MAIL_ID###', $mid, $jumpurl);
+
                             $authCode = GeneralUtility::stdAuthCode($recipRow, ($row['authcode_fieldList'] ? $row['authcode_fieldList'] : 'uid'));
 
                             // check if supplied aC identical with counted authCode
                             if (($aC != '') && ($aC == $authCode)) {
-                                $rowFieldsArray = explode(',', $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['direct_mail']['defaultRecipFields']);
-                                if ($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['direct_mail']['addRecipFields']) {
-                                    $rowFieldsArray = array_merge($rowFieldsArray, explode(',', $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['direct_mail']['addRecipFields']));
-                                }
-
-                                reset($rowFieldsArray);
-                                foreach ($rowFieldsArray as $substField) {
-                                    $jumpurl = str_replace('###USER_' . $substField . '###', $recipRow[$substField], $jumpurl);
-                                }
-                                // Put in the tablename of the userinformation
-                                $jumpurl = str_replace('###SYS_TABLE_NAME###', substr($theTable, 0, 1), $jumpurl);
-                                // Put in the uid of the mail-record
-                                $jumpurl = str_replace('###SYS_MAIL_ID###', $mid, $jumpurl);
 
                                 // If authCode is provided, keep it.
                                 $jumpurl = str_replace('###SYS_AUTHCODE###', $aC, $jumpurl);
@@ -126,8 +128,8 @@ class JumpurlController
                                     $_POST['pid']  = $recipRow['pid'];
                                     $_POST['logintype'] = 'login';
                                 }
-                            } else {
-                                throw new \Exception('authCode: Calculated authCode did not match the submitted authCode.', 1376899631);
+//                            } else {
+//                                throw new \Exception('authCode: Calculated authCode did not match the submitted authCode.', 1376899631);
                             }
                         }
                     }
