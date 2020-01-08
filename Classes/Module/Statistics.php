@@ -1414,15 +1414,19 @@ class Statistics extends \TYPO3\CMS\Backend\Module\BaseScriptClass
                 $url = $pathSite . $url;
             }
 
-            $content = GeneralUtility::getURL($url);
-
-            if (preg_match('/\<\s*title\s*\>(.*)\<\s*\/\s*title\s*\>/i', $content, $matches)) {
-                // get the page title
-                $contentTitle = GeneralUtility::fixed_lgd_cs(trim($matches[1]), 50);
-            } else {
-                // file?
-                $file = GeneralUtility::split_fileref($url);
-                $contentTitle = $file['file'];
+            try {
+                $content = GeneralUtility::getURL($url);
+                if (preg_match('/\<\s*title\s*\>(.*)\<\s*\/\s*title\s*\>/i', $content, $matches)) {
+                    // get the page title
+                    $contentTitle = GeneralUtility::fixed_lgd_cs(trim($matches[1]), 50);
+                } else {
+                    // file?
+                    $file = GeneralUtility::split_fileref($url);
+                    $contentTitle = $file['file'];
+                }
+            } catch (\Exception $e) {
+                //When the url can't be retrieved, set the title to the url
+                $contentTitle = $url;
             }
         }
 
